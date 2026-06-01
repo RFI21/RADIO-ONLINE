@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Radio Nusantara - Live Streaming</title>
+    
+    <!-- Tailwind CSS untuk styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome untuk Ikon -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #090d16 0%, #020408 100%);
+            background-attachment: fixed;
+        }
+        
+        /* Efek Glassmorphism premium */
+        .glass {
+            background: rgba(13, 20, 35, 0.45);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-highlight {
+            background: rgba(16, 185, 129, 0.08);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+        }
+
+        .glass-player {
+            background: rgba(7, 11, 20, 0.92);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        /* Kustomisasi scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.3); 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.1); 
+            border-radius: 99px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(16, 185, 129, 0.3); 
+        }
+
+        /* Animasi equalizer sinyal aktif */
+        .bars-container {
+            display: flex;
+            align-items: flex-end;
+            gap: 3px;
+            height: 22px;
+        }
+        .bar {
+            width: 3px;
+            background-color: #10b981;
+            border-radius: 1px;
+            animation: bounce 1s infinite alternate;
+            transform-origin: bottom;
+        }
+        .bar:nth-child(2) { animation-delay: 0.15s; height: 60%; }
+        .bar:nth-child(3) { animation-delay: 0.35s; height: 35%; }
+        .bar:nth-child(4) { animation-delay: 0.05s; height: 80%; }
+        .bar:nth-child(5) { animation-delay: 0.5s; height: 50%; }
+
+        @keyframes bounce {
+            0% { transform: scaleY(0.2); }
+            100% { transform: scaleY(1); }
+        }
+
+        /* Animasi Piringan Hitam (Vinyl) Berputar */
+        .vinyl-spin {
+            animation: spin 16s linear infinite;
+        }
+        .vinyl-paused {
+            animation-play-state: paused;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .fallback-logo {
+            background: linear-gradient(135deg, #10b981, #06b6d4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        /* Glow neon custom */
+        .neon-glow {
+            box-shadow: 0 0 30px rgba(16, 185, 129, 0.15);
+        }
+        .neon-glow-active {
+            box-shadow: 0 0 40px rgba(16, 185, 129, 0.35);
+        }
+    </style>
+</head>
+<body class="text-gray-100 min-h-screen flex flex-col relative pb-28">
+
+    <!-- HEADER UTAMA -->
+    <header class="sticky top-0 z-40 glass border-b border-white/5 shadow-lg">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="navigateTo('home')">
+                <div class="p-2.5 bg-gradient-to-tr from-emerald-500 to-teal-500 rounded-xl shadow-lg shadow-emerald-500/20">
+                    <i class="fas fa-broadcast-tower text-white text-lg"></i>
+                </div>
+                <h1 class="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-teal-400 tracking-tight">
+                    Radio Nusantara
+                </h1>
+            </div>
+            
+            <!-- Badge Aktif di Header jika ada yang berputar -->
+            <div id="header-now-playing" class="hidden md:flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs border border-emerald-500/20">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span id="header-playing-name" class="font-medium truncate max-w-[150px]">Nama Radio</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTAINER NOTIFIKASI ERROR CUSTOM -->
+    <div id="notification-container" class="fixed top-24 right-4 z-50 flex flex-col gap-3 pointer-events-none max-w-sm w-full"></div>
+
+    <!-- HALAMAN BERANDA (HOME VIEW) -->
+    <div id="view-home" class="view-panel max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow">
+        <!-- Banner Dashboard -->
+        <div class="mb-8 p-6 sm:p-10 rounded-3xl bg-gradient-to-r from-emerald-950/40 via-slate-900/40 to-teal-950/20 border border-emerald-500/10 flex flex-col md:flex-row items-center justify-between gap-6 relative overflow-hidden">
+            <div class="absolute -top-24 -left-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl"></div>
+            <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-teal-500/10 rounded-full blur-3xl"></div>
+            
+            <div class="relative z-10">
+                <h2 class="text-2xl sm:text-3xl font-black text-white mb-2 leading-tight">Jelajahi Suara Nusantara</h2>
+                <p class="text-gray-400 text-sm sm:text-base max-w-xl leading-relaxed">Dengarkan siaran langsung musik daerah, bincang-bincang inspiratif, berita terkini, dan lantunan religi dari seluruh penjuru Indonesia.</p>
+            </div>
+            <div class="relative w-full md:w-80 z-10">
+                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                    <i class="fas fa-search text-gray-400"></i>
+                </div>
+                <input type="text" id="searchInput" 
+                    class="block w-full pl-11 pr-4 py-3 border border-white/10 rounded-2xl bg-slate-950/60 text-gray-100 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-transparent transition" 
+                    placeholder="Cari saluran atau kota...">
+            </div>
+        </div>
+
+        <!-- Judul Bagian -->
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-bold text-gray-200 flex items-center gap-2.5">
+                <i class="fas fa-signal text-emerald-400"></i> Semua Saluran Terpopuler
+            </h3>
+            <div id="station-count" class="text-xs text-gray-400 bg-white/5 px-3 py-1.5 rounded-xl border border-white/5">0 Saluran</div>
+        </div>
+
+        <!-- Grid Radio -->
+        <div id="station-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <!-- Loading Indicator -->
+            <div class="col-span-full flex flex-col items-center justify-center py-24 text-emerald-400">
+                <i class="fas fa-circle-notch fa-spin text-4xl mb-4"></i>
+                <p class="text-gray-400 animate-pulse text-sm">Menghubungkan ke pemancar...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- HALAMAN DETAIL (DETAIL VIEW) -->
+    <div id="view-detail" class="view-panel hidden max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full flex-grow">
+        <!-- Tombol Kembali -->
+        <button onclick="navigateTo('home')" class="mb-6 flex items-center gap-2 text-sm text-gray-400 hover:text-emerald-400 transition group font-medium">
+            <i class="fas fa-arrow-left transition-transform group-hover:-translate-x-1"></i> Kembali ke Beranda
+        </button>
+
+        <!-- KONSOL AUDIO KREATIF & MODERN (UTAMA) -->
+        <div class="relative w-full rounded-3xl overflow-hidden glass border border-white/10 mb-8 p-6 sm:p-10 flex flex-col lg:flex-row items-center gap-8 lg:gap-12 neon-glow transition-all duration-500" id="detail-card-deck">
+            <!-- Efek Cahaya Latar Belakang Dibalik Piringan -->
+            <div class="absolute -left-20 top-1/2 -translate-y-1/2 w-80 h-80 rounded-full bg-emerald-500/5 blur-[80px] pointer-events-none"></div>
+            
+            <!-- Sisi Kiri: Piringan Hitam / Vinyl Visualizer -->
+            <div class="relative flex-shrink-0 flex items-center justify-center w-56 h-56 sm:w-64 sm:h-64">
+                <!-- Lingkar Casing Luar -->
+                <div class="absolute inset-0 rounded-full border-4 border-slate-800/30 bg-slate-950/20 shadow-inner"></div>
+                
+                <!-- Vinyl Hitam Berputar -->
+                <div id="vinyl-disc" class="vinyl-spin vinyl-paused absolute w-48 h-48 sm:w-56 sm:h-56 rounded-full bg-gradient-to-r from-zinc-900 via-stone-950 to-zinc-900 flex items-center justify-center shadow-2xl border-4 border-zinc-800">
+                    <!-- Garis Alur Piringan Hitam -->
+                    <div class="absolute inset-2.5 rounded-full border border-stone-800/40"></div>
+                    <div class="absolute inset-6 rounded-full border border-stone-800/40"></div>
+                    <div class="absolute inset-10 rounded-full border border-stone-800/40"></div>
+                    <div class="absolute inset-14 rounded-full border border-stone-800/30"></div>
+                    
+                    <!-- Area Label Tengah (Logo Radio) -->
+                    <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden bg-slate-900 border-2 border-stone-900 relative z-10">
+                        <img id="detail-logo" src="" alt="Logo" class="w-full h-full object-cover hidden">
+                        <div id="detail-fallback" class="w-full h-full fallback-logo text-3xl">
+                            <i class="fas fa-radio"></i>
+                        </div>
+                    </div>
+                    
+                    <!-- Lubang Tengah Vinyl -->
+                    <div class="absolute w-3 h-3 bg-[#090d16] rounded-full border border-stone-700 z-20"></div>
+                </div>
+                
+                <!-- Lengan Jarum Pemutar (Stylus Arm) fiktif -->
+                <div class="absolute top-2 right-4 w-12 h-20 origin-top transform rotate-[15deg] transition-transform duration-500 pointer-events-none z-30 opacity-70 hidden sm:block" id="vinyl-stylus">
+                    <!-- Metal Needle Arm SVG -->
+                    <svg class="w-full h-full" viewBox="0 0 40 80" fill="none">
+                        <path d="M10 5 C10 5, 25 25, 25 45 L20 65 L22 75" stroke="#94a3b8" stroke-width="3" stroke-linecap="round"/>
+                        <circle cx="10" cy="5" r="4" fill="#64748b"/>
+                        <rect x="17" y="65" width="8" height="12" rx="1" fill="#475569"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Sisi Kanan: Informasi Saluran & Panel Kontrol Interaktif -->
+            <div class="flex-grow w-full text-center lg:text-left relative z-10">
+                <!-- Status Siaran Langsung (LIVE) -->
+                <div class="inline-flex items-center gap-2 bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-full text-xs border border-emerald-500/20 mb-4 font-bold tracking-wider">
+                    <span class="relative flex h-2 w-2">
+                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    SIARAN LANGSUNG
+                </div>
+
+                <h2 id="detail-name" class="text-3xl sm:text-4xl font-extrabold text-white mb-2 leading-tight tracking-tight">Nama Radio</h2>
+                <p id="detail-location" class="text-base text-gray-400 mb-6 flex items-center justify-center lg:justify-start gap-2">
+                    <i class="fas fa-map-marker-alt text-emerald-500"></i> <span id="detail-location-text">Lokasi</span>
+                </p>
+                
+                <!-- Tag Genre -->
+                <div class="flex flex-wrap gap-2 justify-center lg:justify-start mb-8">
+                    <span id="detail-genre" class="text-xs bg-emerald-500/10 px-4 py-1.5 rounded-xl border border-emerald-500/20 text-emerald-300 font-semibold uppercase tracking-wider">GENRE</span>
+                </div>
+
+                <!-- Kontrol Utama Pemutar Konsol -->
+                <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+                    <button id="detail-btn-play" class="w-full sm:w-auto px-8 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 flex items-center justify-center gap-3 shadow-lg shadow-emerald-500/15 hover:scale-[1.02] active:scale-95 transition-all duration-300 font-bold">
+                        <i class="fas fa-play text-lg" id="detail-btn-icon"></i> <span id="detail-btn-text">Mulai Mendengarkan</span>
+                    </button>
+                    <p class="text-xs text-gray-400 mt-2 sm:mt-0" id="detail-play-status">Klik untuk menghubungkan frekuensi</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Detil Metadata Lagu Aktif (Ditampilkan Hanya Jika Ada Informasi Lagu Real-Time) -->
+        <div id="now-playing-track-panel" class="hidden glass rounded-3xl p-6 sm:p-8 border-emerald-500/20 bg-gradient-to-r from-slate-950 via-emerald-950/10 to-slate-950 neon-glow transition-all duration-300">
+            <h3 class="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <i class="fas fa-compact-disc animate-spin-slow text-sm"></i> Sedang Diputar Saat Ini
+            </h3>
+            <div class="flex items-center gap-4 sm:gap-6">
+                <div class="p-5 bg-emerald-500/10 text-emerald-400 rounded-2xl text-3xl shadow-lg border border-emerald-500/10 animate-pulse">
+                    <i class="fas fa-music"></i>
+                </div>
+                <div class="min-w-0">
+                    <h4 id="track-title" class="text-xl sm:text-2xl font-extrabold text-white truncate tracking-tight">Judul Lagu Tidak Diketahui</h4>
+                    <p id="track-artist" class="text-sm sm:text-base text-gray-400 truncate mt-1">Artis / Informasi Tambahan</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PEMUTAR AUDIO FLOAT DI BAWAH (PERSISTEN & TANPA VOLUME SLIDER) -->
+    <div id="audio-player-container" class="fixed bottom-0 w-full glass-player transform translate-y-full transition-transform duration-300 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.5)]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 h-24 flex items-center justify-between gap-4">
+            
+            <!-- Info Radio Saat Ini (Kiri) -->
+            <div class="flex items-center gap-4 w-1/2 min-w-0 cursor-pointer" id="player-info-block">
+                <img id="player-image" src="" alt="Logo" class="h-14 w-14 rounded-xl object-cover bg-white/10 hidden shadow-md border border-white/10">
+                <div id="player-fallback-logo" class="h-14 w-14 rounded-xl fallback-logo shadow-md text-lg flex-shrink-0 border border-white/5">
+                    <i class="fas fa-radio"></i>
+                </div>
+                <div class="truncate">
+                    <h3 id="player-name" class="font-bold text-gray-100 truncate text-base hover:text-emerald-400 transition">Pilih Radio</h3>
+                    <p id="player-tags" class="text-xs text-emerald-400 truncate mt-0.5">Menunggu...</p>
+                </div>
+            </div>
+
+            <!-- Kontrol Utama & Visualizer (Kanan - Tanpa Volume) -->
+            <div class="flex items-center gap-6 justify-end w-1/2">
+                <!-- Animasi visualizer aktif -->
+                <div id="visualizer" class="bars-container hidden">
+                    <div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                </div>
+
+                <button id="btn-stop" class="text-gray-400 hover:text-white hover:scale-105 transition-all p-2" title="Berhenti">
+                    <i class="fas fa-stop text-base"></i>
+                </button>
+                <button id="btn-play-pause" class="h-12 w-12 flex items-center justify-center rounded-full bg-emerald-500 hover:bg-emerald-400 text-slate-900 transition-all shadow-lg shadow-emerald-500/20 hover:scale-105">
+                    <i class="fas fa-play text-lg ml-0.5"></i>
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- LOGIKA JAVASCRIPT UTAMA -->
+    <script>
+        // State Manajemen Aplikasi
+        const state = {
+            stations: [],           // Penyimpan stasiun radio mentah
+            filteredStations: [],   // Hasil saringan pencarian
+            currentStation: null,   // Radio aktif saat ini
+            isPlaying: false,       // Status audio aktif
+            audio: new Audio(),     // Instansi pemutar HTML5 Audio
+            activeView: 'home',     // Status navigasi halaman ('home' atau 'detail')
+            connectionTimer: null   // Timer untuk batas waktu koneksi (timeout)
+        };
+
+        // Kumpulan referensi DOM
+        const els = {
+            grid: document.getElementById('station-grid'),
+            searchInput: document.getElementById('searchInput'),
+            stationCount: document.getElementById('station-count'),
+            playerContainer: document.getElementById('audio-player-container'),
+            playerName: document.getElementById('player-name'),
+            playerTags: document.getElementById('player-tags'),
+            playerImg: document.getElementById('player-image'),
+            playerFallback: document.getElementById('player-fallback-logo'),
+            btnPlayPause: document.getElementById('btn-play-pause'),
+            btnStop: document.getElementById('btn-stop'),
+            visualizer: document.getElementById('visualizer'),
+            playerInfoBlock: document.getElementById('player-info-block'),
+            notificationContainer: document.getElementById('notification-container'),
+            
+            // Elemen Halaman Detail
+            viewHome: document.getElementById('view-home'),
+            viewDetail: document.getElementById('view-detail'),
+            detailCardDeck: document.getElementById('detail-card-deck'),
+            detailLogo: document.getElementById('detail-logo'),
+            detailFallback: document.getElementById('detail-fallback'),
+            detailName: document.getElementById('detail-name'),
+            detailLocationText: document.getElementById('detail-location-text'),
+            detailGenre: document.getElementById('detail-genre'),
+            detailBtnPlay: document.getElementById('detail-btn-play'),
+            detailBtnIcon: document.getElementById('detail-btn-icon'),
+            detailBtnText: document.getElementById('detail-btn-text'),
+            detailPlayStatus: document.getElementById('detail-play-status'),
+            vinylDisc: document.getElementById('vinyl-disc'),
+            vinylStylus: document.getElementById('vinyl-stylus'),
+            nowPlayingTrackPanel: document.getElementById('now-playing-track-panel'),
+            trackTitle: document.getElementById('track-title'),
+            trackArtist: document.getElementById('track-artist'),
+            
+            // Elemen Header
+            headerNowPlaying: document.getElementById('header-now-playing'),
+            headerPlayingName: document.getElementById('header-playing-name')
+        };
+
+        // Inisialisasi awal program
+        async function initApp() {
+            // Set volume audio ke standar tinggi karena slider volume dihilangkan
+            state.audio.volume = 0.85;
+            setupEventListeners();
+            await fetchStations();
+        }
+
+        // Setup Event Listeners
+        function setupEventListeners() {
+            // Pencarian Radio
+            els.searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                state.filteredStations = state.stations.filter(station => 
+                    station.name.toLowerCase().includes(query) || 
+                    (station.tags && station.tags.toLowerCase().includes(query)) ||
+                    (station.state && station.state.toLowerCase().includes(query))
+                );
+                renderStations();
+            });
+
+            // Kontrol Audio Persisten
+            els.btnPlayPause.addEventListener('click', togglePlay);
+            els.btnStop.addEventListener('click', stopAudio);
+
+            // Klik info player bawah untuk melompat langsung ke halaman detail radio yang aktif
+            els.playerInfoBlock.addEventListener('click', () => {
+                if (state.currentStation) {
+                    showDetailView(state.currentStation);
+                }
+            });
+
+            // Tombol Play di Halaman Detail Besar
+            els.detailBtnPlay.addEventListener('click', () => {
+                if (state.currentStation) {
+                    togglePlay();
+                }
+            });
+
+            // Event handler internal audio HTML5
+            state.audio.addEventListener('waiting', () => {
+                const text = "Menghubungkan frekuensi (Buffering)...";
+                els.playerTags.textContent = text;
+                els.detailPlayStatus.textContent = text;
+            });
+
+            state.audio.addEventListener('playing', () => {
+                // Berhasil terhubung dan memutar audio, hapus timer batas waktu koneksi!
+                clearTimeout(state.connectionTimer);
+                
+                const tagsText = state.currentStation.tags || "Sedang mengudara langsung";
+                els.playerTags.textContent = tagsText;
+                els.detailPlayStatus.textContent = "Frekuensi terkunci • Mengudara langsung";
+                state.isPlaying = true;
+                updatePlaybackUIs();
+                
+                // Coba ambil metadata teks lagu jika tersedia di stream
+                checkLiveMetadata();
+            });
+
+            // Solusi Bug Utama: Deteksi error yang aman tanpa recursive looping
+            state.audio.addEventListener('error', (e) => {
+                if (!state.audio.src || state.audio.src === window.location.href || !state.currentStation) {
+                    return;
+                }
+                
+                clearTimeout(state.connectionTimer);
+                showCustomAudioError(`Gagal memuat saluran "${state.currentStation.name}". Pemancar sedang luring (offline) atau format tidak didukung.`);
+                stopAudio();
+            });
+        }
+
+        // Mengecek apakah ada informasi lagu real-time yang didukung oleh streaming browser
+        function checkLiveMetadata() {
+            if ('mediaSession' in navigator && navigator.mediaSession.metadata) {
+                const metadata = navigator.mediaSession.metadata;
+                if (metadata.title || metadata.artist) {
+                    showTrackInfo(metadata.title, metadata.artist);
+                    return;
+                }
+            }
+            els.nowPlayingTrackPanel.classList.add('hidden');
+        }
+
+        // Menampilkan kotak informasi lagu jika terdeteksi
+        function showTrackInfo(title, artist) {
+            els.trackTitle.textContent = title || "Judul Lagu Tidak Diketahui";
+            els.trackArtist.textContent = artist || "Artis / Informasi Tambahan";
+            els.nowPlayingTrackPanel.classList.remove('hidden');
+        }
+
+        // Navigasi Antar Halaman Mulus
+        function navigateTo(viewName) {
+            state.activeView = viewName;
+            if (viewName === 'home') {
+                els.viewHome.classList.remove('hidden');
+                els.viewDetail.classList.add('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } else if (viewName === 'detail') {
+                els.viewHome.classList.add('hidden');
+                els.viewDetail.classList.remove('hidden');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
+
+        // Tampilkan Detil Saluran di Halaman Baru
+        function showDetailView(station) {
+            // Setup data statis stasiun ke halaman detail
+            els.detailName.textContent = station.name;
+            els.detailLocationText.textContent = station.state || 'Indonesia';
+            els.detailGenre.textContent = (station.tags && station.tags.trim() !== "") ? station.tags.split(',')[0].toUpperCase() : 'GENERAL';
+            
+            // Konfigurasi logo utama
+            const hasLogo = station.favicon && station.favicon.trim() !== "";
+            if (hasLogo) {
+                els.detailLogo.src = station.favicon;
+                els.detailLogo.classList.remove('hidden');
+                els.detailFallback.classList.add('hidden');
+                els.detailLogo.onerror = () => {
+                    els.detailLogo.classList.add('hidden');
+                    els.detailFallback.classList.remove('hidden');
+                }
+            } else {
+                els.detailLogo.classList.add('hidden');
+                els.detailFallback.classList.remove('hidden');
+            }
+
+            // Reset panel lagu real-time terlebih dahulu
+            els.nowPlayingTrackPanel.classList.add('hidden');
+
+            // Jika stasiun ini adalah stasiun yang sedang aktif diputar
+            if (state.currentStation && state.currentStation.stationuuid === station.stationuuid) {
+                if (state.isPlaying) {
+                    els.detailPlayStatus.textContent = "Frekuensi terkunci • Mengudara langsung";
+                    checkLiveMetadata();
+                } else {
+                    els.detailPlayStatus.textContent = "Siaran dijeda • Klik untuk memulai kembali";
+                }
+            } else {
+                els.detailPlayStatus.textContent = "Klik tombol di bawah untuk menyambungkan frekuensi";
+            }
+
+            // Pindah halaman
+            navigateTo('detail');
+
+            // Jika belum diputar, otomatis putar saat dibuka
+            if (!state.currentStation || state.currentStation.stationuuid !== station.stationuuid) {
+                playStation(station);
+            } else {
+                updatePlaybackUIs();
+            }
+        }
+
+        // Fungsi Menampilkan Notifikasi Error yang Indah & Non-blocking (Anti Lag)
+        function showCustomAudioError(message) {
+            const toast = document.createElement('div');
+            toast.className = "glass border-l-4 border-red-500 text-red-200 p-4 rounded-2xl shadow-2xl flex gap-3 pointer-events-auto animate-slide-in transition-all duration-300 transform translate-x-12 opacity-0";
+            toast.innerHTML = `
+                <div class="text-xl text-red-400 flex-shrink-0"><i class="fas fa-exclamation-circle"></i></div>
+                <div class="min-w-0">
+                    <h5 class="font-bold text-sm text-white">Gagal Memutar</h5>
+                    <p class="text-xs text-gray-300 mt-1 leading-relaxed">${message}</p>
+                </div>
+            `;
+            
+            els.notificationContainer.appendChild(toast);
+            
+            // Efek transisi masuk
+            setTimeout(() => {
+                toast.classList.remove('translate-x-12', 'opacity-0');
+            }, 10);
+
+            // Hilangkan otomatis setelah 6 detik
+            setTimeout(() => {
+                toast.classList.add('translate-x-12', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 6000);
+        }
+
+        // Mengambil Saluran Radio Indonesia Populer dari Radio-Browser API
+        async function fetchStations() {
+            try {
+                const apiUrl = 'https://de1.api.radio-browser.info/json/stations/search?country=Indonesia&hidebroken=true&order=clickcount&reverse=true&limit=100';
+                
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error("Koneksi gagal");
+                
+                const data = await response.json();
+                
+                state.stations = data;
+                state.filteredStations = data;
+                
+                renderStations();
+            } catch (error) {
+                console.error(error);
+                els.grid.innerHTML = `
+                    <div class="col-span-full text-center text-red-400 py-16 glass rounded-3xl mx-4">
+                        <i class="fas fa-satellite-dish fa-3x mb-4 text-gray-500"></i>
+                        <p class="text-white font-semibold">Gagal Membuka Jaringan Radio</p>
+                        <p class="text-xs text-gray-400 mt-2 max-w-md mx-auto">Kami tidak dapat memuat pemancar dari server induk. Coba muat ulang halaman ini atau pastikan koneksi internet Anda stabil.</p>
+                        <button onclick="window.location.reload()" class="mt-4 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-slate-900 rounded-xl text-xs font-bold transition">Muat Ulang Halaman</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Menampilkan Grid Kartu Radio
+        function renderStations() {
+            els.stationCount.textContent = `${state.filteredStations.length} Saluran`;
+            els.grid.innerHTML = '';
+
+            if (state.filteredStations.length === 0) {
+                els.grid.innerHTML = `
+                    <div class="col-span-full text-center text-gray-400 py-16">
+                        <i class="fas fa-search-minus fa-3x mb-4 opacity-40"></i>
+                        <p class="text-sm">Tidak ditemukan saluran radio yang cocok dengan kata kunci.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            state.filteredStations.slice(0, 80).forEach(station => {
+                const card = document.createElement('div');
+                card.className = "glass rounded-2xl p-5 hover:bg-slate-800/20 hover:border-emerald-500/20 transition-all duration-300 group cursor-pointer flex flex-col relative overflow-hidden";
+                
+                let mainTag = "Populer";
+                if (station.tags) {
+                    mainTag = station.tags.split(',')[0];
+                }
+
+                const hasLogo = station.favicon && station.favicon.trim() !== "";
+                const logoHtml = hasLogo 
+                    ? `<img src="${station.favicon}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" class="w-14 h-14 rounded-xl object-cover mb-4 shadow-md bg-white/5" alt="${station.name}">
+                       <div class="w-14 h-14 rounded-xl fallback-logo mb-4 shadow-md text-sm" style="display:none;"><i class="fas fa-radio"></i></div>`
+                    : `<div class="w-14 h-14 rounded-xl fallback-logo mb-4 shadow-md text-sm"><i class="fas fa-radio"></i></div>`;
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-1">
+                        ${logoHtml}
+                        <button class="play-btn w-9 h-9 rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center group-hover:bg-emerald-500 group-hover:text-slate-900 transition-all transform group-hover:scale-105 shadow-md" data-uuid="${station.stationuuid}">
+                            <i class="fas fa-play ml-0.5 text-xs"></i>
+                        </button>
+                    </div>
+                    
+                    <h3 class="font-bold text-base mb-1 truncate text-gray-100 group-hover:text-emerald-400 transition-colors">${station.name}</h3>
+                    <p class="text-xs text-gray-400 truncate mb-4"><i class="fas fa-map-marker-alt text-emerald-500/80 mr-1"></i> ${station.state || 'Indonesia'}</p>
+                    
+                    <div class="mt-auto flex justify-between items-center pt-2 border-t border-white/5">
+                        <span class="text-[10px] uppercase tracking-wider bg-white/5 px-2.5 py-1 rounded-md text-emerald-400 truncate max-w-[120px] font-medium">${mainTag}</span>
+                        <span class="text-[10px] text-gray-500"><i class="fas fa-users mr-1"></i> ${station.clickcount || 0}</span>
+                    </div>
+                    
+                    <div class="absolute top-0 right-0 w-full h-full border-2 border-emerald-500/30 rounded-2xl pointer-events-none opacity-0 transition-opacity duration-300" id="active-ring-${station.stationuuid}"></div>
+                `;
+
+                // Ketika area kartu diklik, buka detail
+                card.addEventListener('click', (e) => {
+                    const playBtn = card.querySelector('.play-btn');
+                    if (e.target === playBtn || playBtn.contains(e.target)) {
+                        e.stopPropagation();
+                        playStation(station);
+                    } else {
+                        showDetailView(station);
+                    }
+                });
+
+                els.grid.appendChild(card);
+            });
+            
+            updatePlaybackUIs();
+        }
+
+        // Proses Memainkan Radio Aliran Langsung
+        function playStation(station) {
+            clearTimeout(state.connectionTimer);
+
+            if (state.currentStation && state.currentStation.stationuuid === station.stationuuid) {
+                togglePlay();
+                return;
+            }
+
+            state.currentStation = station;
+            state.audio.src = station.url_resolved;
+            
+            els.playerTags.textContent = "Menyambungkan stasiun...";
+            if (state.activeView === 'detail' && els.detailName.textContent === station.name) {
+                els.detailPlayStatus.textContent = "Menghubungkan satelit streaming...";
+            }
+
+            // Batas waktu koneksi (8 detik)
+            state.connectionTimer = setTimeout(() => {
+                if (state.audio.readyState < 3) {
+                    showCustomAudioError(`Koneksi ke "${station.name}" terputus karena server terlalu lama merespon.`);
+                    stopAudio();
+                }
+            }, 8000);
+
+            state.audio.play()
+                .then(() => {
+                    state.isPlaying = true;
+                    updatePlaybackUIs();
+                })
+                .catch(err => {
+                    console.warn("Autoplay diblokir browser atau error awal", err);
+                });
+            
+            updatePlaybackUIs();
+        }
+
+        // Play dan Pause Jeda Aliran Audio
+        function togglePlay() {
+            if (!state.currentStation) return;
+
+            clearTimeout(state.connectionTimer);
+
+            if (state.isPlaying) {
+                state.audio.pause();
+                state.isPlaying = false;
+                if (state.activeView === 'detail') {
+                    els.detailPlayStatus.textContent = "Siaran dijeda • Klik untuk memulai kembali";
+                }
+            } else {
+                state.audio.src = state.currentStation.url_resolved;
+                
+                state.connectionTimer = setTimeout(() => {
+                    if (state.audio.readyState < 3) {
+                        showCustomAudioError(`Koneksi terputus karena server tidak merespon.`);
+                        stopAudio();
+                    }
+                }, 8000);
+
+                state.audio.play().catch(e => console.error(e));
+                state.isPlaying = true;
+            }
+            updatePlaybackUIs();
+        }
+
+        // Menghentikan Seluruh Koneksi Radio secara Aman
+        function stopAudio() {
+            clearTimeout(state.connectionTimer);
+            state.audio.pause();
+            
+            state.audio.removeAttribute('src');
+            state.audio.load();
+            
+            state.isPlaying = false;
+            state.currentStation = null;
+            updatePlaybackUIs();
+        }
+
+        // Pembaruan Seluruh Antarmuka Pemutar Audio di Seluruh Halaman
+        function updatePlaybackUIs() {
+            if (state.currentStation) {
+                els.playerContainer.classList.remove('translate-y-full');
+                els.playerName.textContent = state.currentStation.name;
+                
+                if (state.currentStation.favicon && state.currentStation.favicon.trim() !== "") {
+                    els.playerImg.src = state.currentStation.favicon;
+                    els.playerImg.classList.remove('hidden');
+                    els.playerFallback.classList.add('hidden');
+                    els.playerImg.onerror = () => {
+                        els.playerImg.classList.add('hidden');
+                        els.playerFallback.classList.remove('hidden');
+                    }
+                } else {
+                    els.playerImg.classList.add('hidden');
+                    els.playerFallback.classList.remove('hidden');
+                }
+
+                els.headerNowPlaying.classList.remove('hidden');
+                els.headerNowPlaying.classList.add('flex');
+                els.headerPlayingName.textContent = state.currentStation.name;
+            } else {
+                els.playerContainer.classList.add('translate-y-full');
+                els.headerNowPlaying.classList.add('hidden');
+                els.headerNowPlaying.classList.remove('flex');
+            }
+
+            // Atur status tombol play/pause mengambang
+            if (state.isPlaying) {
+                els.btnPlayPause.innerHTML = '<i class="fas fa-pause text-base"></i>';
+                els.visualizer.classList.remove('hidden');
+                els.visualizer.classList.add('flex');
+            } else {
+                els.btnPlayPause.innerHTML = '<i class="fas fa-play text-base ml-0.5"></i>';
+                els.visualizer.classList.add('hidden');
+                els.visualizer.classList.remove('flex');
+            }
+
+            // Sinkronisasikan Tampilan Kreatif Halaman Detail
+            if (state.activeView === 'detail' && state.currentStation) {
+                const isCurrent = state.currentStation.stationuuid === state.currentStation.stationuuid;
+                
+                if (state.isPlaying && isCurrent) {
+                    // Berputar
+                    els.vinylDisc.classList.remove('vinyl-paused');
+                    
+                    // Putar Jarum Stylus (Efek visual menyentuh vinyl)
+                    els.vinylStylus.style.transform = "rotate(28deg)";
+                    
+                    // Glow Dek Player
+                    els.detailCardDeck.classList.add('neon-glow-active');
+                    
+                    // Tombol Detail
+                    els.detailBtnIcon.className = "fas fa-pause text-lg";
+                    els.detailBtnText.textContent = "Jeda Siaran";
+                    els.detailBtnPlay.className = "w-full sm:w-auto px-8 py-4 rounded-2xl bg-teal-500 hover:bg-teal-400 text-slate-900 flex items-center justify-center gap-3 shadow-lg shadow-teal-500/15 hover:scale-[1.02] active:scale-95 transition-all duration-300 font-bold";
+                } else {
+                    // Pause Putaran & Kembalikan Jarum Stylus
+                    els.vinylDisc.classList.add('vinyl-paused');
+                    els.vinylStylus.style.transform = "rotate(15deg)";
+                    
+                    // Redupkan Glow Dek Player
+                    els.detailCardDeck.classList.remove('neon-glow-active');
+                    
+                    // Tombol Detail
+                    els.detailBtnIcon.className = "fas fa-play text-lg";
+                    els.detailBtnText.textContent = "Putar Siaran";
+                    els.detailBtnPlay.className = "w-full sm:w-auto px-8 py-4 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-900 flex items-center justify-center gap-3 shadow-lg shadow-emerald-500/15 hover:scale-[1.02] active:scale-95 transition-all duration-300 font-bold";
+                }
+            }
+
+            updateGridActiveState();
+        }
+
+        // Sorot Kartu Radio yang Sedang Aktif di Beranda Grid
+        function updateGridActiveState() {
+            document.querySelectorAll('[id^="active-ring-"]').forEach(ring => {
+                ring.classList.add('opacity-0');
+            });
+
+            document.querySelectorAll('.play-btn').forEach(btn => {
+                btn.innerHTML = '<i class="fas fa-play ml-0.5 text-xs"></i>';
+                btn.classList.remove('bg-emerald-500', 'text-slate-900');
+                btn.classList.add('bg-emerald-500/10', 'text-emerald-400');
+            });
+
+            if (state.currentStation) {
+                const activeRing = document.getElementById(`active-ring-${state.currentStation.stationuuid}`);
+                if (activeRing) {
+                    activeRing.classList.remove('opacity-0');
+                    const activeBtn = activeRing.parentElement.querySelector('.play-btn');
+                    if (activeBtn) {
+                        activeBtn.classList.remove('bg-emerald-500/10', 'text-emerald-400');
+                        activeBtn.classList.add('bg-emerald-500', 'text-slate-900');
+                        if (state.isPlaying) {
+                            activeBtn.innerHTML = '<i class="fas fa-pause text-xs"></i>';
+                        } else {
+                            activeBtn.innerHTML = '<i class="fas fa-play ml-0.5 text-xs"></i>';
+                        }
+                    }
+                }
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
