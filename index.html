@@ -544,7 +544,7 @@
         // Mengambil Saluran Radio Indonesia Populer dari Radio-Browser API
         async function fetchStations() {
             try {
-                const apiUrl = 'https://de1.api.radio-browser.info/json/stations/search?country=Indonesia&hidebroken=true&order=clickcount&reverse=true&limit=100';
+                const apiUrl = 'https://de1.api.radio-browser.info/json/stations/search?country=Indonesia&hidebroken=true&order=clickcount&reverse=true&limit=1000';
                 
                 const response = await fetch(apiUrl);
                 if (!response.ok) throw new Error("Koneksi gagal");
@@ -583,7 +583,7 @@
                 return;
             }
 
-            state.filteredStations.slice(0, 80).forEach(station => {
+            state.filteredStations.slice(0, 500).forEach(station => {
                 const card = document.createElement('div');
                 card.className = "glass rounded-2xl p-5 hover:bg-slate-800/20 hover:border-emerald-500/20 transition-all duration-300 group cursor-pointer flex flex-col relative overflow-hidden";
                 
