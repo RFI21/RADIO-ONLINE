@@ -663,7 +663,7 @@
                     showCustomAudioError(`Koneksi ke "${station.name}" terputus karena server terlalu lama merespon.`);
                     stopAudio();
                 }
-            }, 30000);
+            }, 50000);
 
             state.audio.play()
                 .then(() => {
