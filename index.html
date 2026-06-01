@@ -711,7 +711,7 @@ if ('serviceWorker' in navigator) {
                         showCustomAudioError(`Koneksi terputus karena server tidak merespon.`);
                         stopAudio();
                     }
-                }, 8000);
+                }, 30000);
 
                 state.audio.play().catch(e => console.error(e));
                 state.isPlaying = true;
