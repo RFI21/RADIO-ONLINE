@@ -546,12 +546,18 @@
             try {
                 const apiUrl = 'https://de1.api.radio-browser.info/json/stations/search?country=Indonesia&hidebroken=true&order=clickcount&reverse=true&limit=1000';
                 
+                
                 const response = await fetch(apiUrl);
+
+
                 if (!response.ok) throw new Error("Koneksi gagal");
                 
                 const data = await response.json();
                 
-                state.stations = data;
+                state.stations = data.filter(station =>
+                    station.lastcheckok === 1 &&
+                    (station.url_resolved || station.url)
+                );
                 state.filteredStations = data;
                 
                 renderStations();
@@ -644,7 +650,7 @@
             }
 
             state.currentStation = station;
-            state.audio.src = station.url_resolved;
+            state.audio.src = station.url_resolved || station.url;
             
             els.playerTags.textContent = "Menyambungkan stasiun...";
             if (state.activeView === 'detail' && els.detailName.textContent === station.name) {
@@ -684,7 +690,9 @@
                     els.detailPlayStatus.textContent = "Siaran dijeda • Klik untuk memulai kembali";
                 }
             } else {
-                state.audio.src = state.currentStation.url_resolved;
+                state.audio.src =
+    state.currentStation.url_resolved ||
+    state.currentStation.url;
                 
                 state.connectionTimer = setTimeout(() => {
                     if (state.audio.readyState < 3) {
