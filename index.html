@@ -558,7 +558,7 @@
                     station.lastcheckok === 1 &&
                     (station.url_resolved || station.url)
                 );
-                state.filteredStations = data;
+                state.filteredStations = state.stations;
                 
                 renderStations();
             } catch (error) {
